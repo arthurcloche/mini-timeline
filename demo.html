@@ -1,96 +1,352 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Mini Timeline - Interactive Demo</title>
     <style>
-        body { margin: 0; padding: 20px; font-family: monospace; background: #1a1a1a; color: #fff; }
-        .controls { margin-bottom: 20px; }
-        .control-group { margin: 10px 0; }
-        input[type="range"] { width: 400px; }
-        canvas { border: 1px solid #333; background: #000; display: block; margin: 20px 0; }
-        .info { margin-top: 20px; font-size: 12px; color: #888; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff; 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            opacity: 0.8;
+            font-size: 1.1em;
+        }
+
+        .main-controls {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            margin: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .progress-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .progress-section h3 {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            color: #4ecdc4;
+        }
+
+        .progress-slider {
+            width: 100%;
+            max-width: 600px;
+            height: 12px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+
+        .progress-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+            transition: transform 0.2s ease;
+        }
+
+        .progress-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .progress-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin: 10px 0;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        .input-modes {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .input-mode {
+            padding: 10px 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 25px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .input-mode.active {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-color: transparent;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .input-mode:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .playback-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .control-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 30px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .scene-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .canvas {
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: #000;
+        }
+
+        .info-panel {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            margin: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .feature {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .feature strong {
+            color: #4ecdc4;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2em; }
+            .main-controls { margin: 10px; padding: 20px; }
+            .progress-slider { max-width: 400px; }
+            .canvas { max-width: 100%; height: auto; }
+        }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <div class="control-group">
-            <label>Timeline Progress: <input type="range" id="progress" min="0" max="1" step="0.01" value="0"></label>
-            <span id="progressValue">0.00</span>
+    <div class="header">
+        <h1>Mini Timeline</h1>
+        <p>Frame-agnostic animation library • Interactive Demo</p>
+    </div>
+
+    <div class="main-controls">
+        <div class="progress-section">
+            <h3>Timeline Progress</h3>
+            <input type="range" id="progress" class="progress-slider" min="0" max="1" step="0.001" value="0">
+            <div class="progress-value" id="progressValue">0.000</div>
+            
+            <div class="input-modes">
+                <div class="input-mode active" data-mode="manual">Manual Control</div>
+                <div class="input-mode" data-mode="time">Time-based</div>
+                <div class="input-mode" data-mode="scroll">Scroll-based</div>
+                <div class="input-mode" data-mode="mouse">Mouse X-axis</div>
+            </div>
         </div>
-        <div class="control-group">
-            <button id="playBtn">Play</button>
-            <button id="pauseBtn">Pause</button>
-            <button id="resetBtn">Reset</button>
+
+        <div class="playback-controls">
+            <button class="control-btn" id="playBtn">▶ Play</button>
+            <button class="control-btn" id="pauseBtn">⏸ Pause</button>
+            <button class="control-btn" id="resetBtn">⏹ Reset</button>
         </div>
     </div>
     
-    <canvas id="timeline-canvas" width="800" height="500"></canvas>
+    <div class="scene-container">
+        <canvas id="timeline-canvas" class="canvas" width="1000" height="600"></canvas>
+    </div>
     
-    <div class="info">
-        <strong>Track A:</strong> Parent track (purple) - keyframes with .at(progress, value), callback at peak<br>
-        <strong>Track B:</strong> Callback track (blue) - uses .when() for callbacks that don't affect interpolation<br>
-        <strong>Track C:</strong> Hold track (green) - ramps to 0.8, holds for 0.3 duration, then continues<br>
-        <strong>Track D:</strong> Child of A (orange) - follows parent for 0.4 duration, then independent keyframes<br>
-        <strong>Track F:</strong> Easing track (yellow) - custom quadratic easing with callback completion<br>
-        <strong>Stagger:</strong> Five tracks with 0.15 offset delay, showing cascading animation effects<br>
-        <strong>New API:</strong> .at(progress, value) for keyframes, .when(progress, callback) for callbacks, hold(duration), child(track, duration)
+    <div class="info-panel">
+        <h3>🎬 Animation Showcase</h3>
+        <p>This interactive demo demonstrates all the powerful features of the Mini Timeline library through a rich animated scene.</p>
+        
+        <div class="feature-grid">
+            <div class="feature">
+                <strong>🎯 Logo Animation:</strong> Parent track with child following, demonstrating .child() relationships
+            </div>
+            <div class="feature">
+                <strong>📝 Text Effects:</strong> Staggered character animations with custom easing curves
+            </div>
+            <div class="feature">
+                <strong>🟦 Shape Morphing:</strong> Hold periods with smooth transitions between keyframes
+            </div>
+            <div class="feature">
+                <strong>🌈 Color Transitions:</strong> RGB interpolation across multiple keyframes
+            </div>
+            <div class="feature">
+                <strong>⭐ Particle System:</strong> Multiple tracks with different timing and easing
+            </div>
+            <div class="feature">
+                <strong>🎮 Interactive Modes:</strong> Switch between manual, time, scroll, and mouse control
+            </div>
+        </div>
+        
+        <p style="margin-top: 20px; opacity: 0.7;">
+            <strong>Try different input modes above!</strong> The timeline can be driven by any source: time, scroll position, user input, or any 0-1 value.
+        </p>
     </div>
 
     <script type="module">
-        // Import the main timeline implementation
         import { createTimeline } from './timeline.js';
 
-        // Create timeline
-        let callbackLog = [];
-        const { a, b, c, d, e, f, timeline } = createTimeline((timeline) => {
-            const a = timeline.track((keyframes) => {
-                keyframes.start(0)
-                    .at(0.15, 0.25)
-                    .at(0.5, 1, () => {
-                        callbackLog.push('A: peaked at 1');
-                    })
-                    .at(0.95, 0.5)
-                    .at(1, 0);
+        // Create rich animated scene timeline
+        const { 
+            logoScale, logoRotation, logoChild,
+            textChars, textGlow, 
+            morphShape, shapeColor,
+            particles, 
+            bgGradient,
+            timeline 
+        } = createTimeline((timeline) => {
+            // Logo animation (parent-child relationship demo)
+            const logoScale = timeline.track((kf) => {
+                kf.start(0.5)
+                  .at(0.2, 1.2, t => 1 - Math.pow(1 - t, 3)) // Ease out cubic
+                  .at(0.4, 0.8)
+                  .hold(0.2)
+                  .at(0.8, 1.1, t => t * t * (3 - 2 * t)) // Smooth step
+                  .at(1, 1);
             }).parent();
             
-            const b = timeline.track((keyframes) => {
-                keyframes.start(0.2)
-                    .at(0.3, 0.8)
-                    .when(0.4, () => callbackLog.push('B: callback at 0.4'))
-                    .at(0.6, 0.1)
-                    .at(0.8, 0.9)
-                    .when('end', () => callbackLog.push('B: reached end'));
-            });
-
-            const c = timeline.track((keyframes) => {
-                keyframes.start(0)
-                    .at(0.4, 0.8, () => {
-                        callbackLog.push('C: about to hold at 0.8');
-                    })
-                    .hold(0.3)
-                    .at(0.9, 0);
+            const logoRotation = timeline.track((kf) => {
+                kf.start(0)
+                  .at(0.3, 0.25)
+                  .at(0.7, -0.25)
+                  .at(1, 0);
             });
             
-            const d = timeline.track((keyframes) => {
-                keyframes.child(a, 0.5)
-                    .when('start', () => callbackLog.push('D: child started'))
-                    .at(0.5, 0.3)
-                    .at(1, 1);
-            });
-            
-            const e = timeline.stagger(5, 0.15, (keyframes) => {
-                keyframes.start(0)
-                    .at(0.5, 1)
-                    .at(1, 0.2);
+            const logoChild = timeline.track((kf) => {
+                kf.child(logoScale, 0.6) // Follow parent for 60%
+                  .at(0.8, 0.9)
+                  .at(1, 1.1);
             });
 
-            const f = timeline.track((keyframes) => {
-                keyframes.start(1)
-                    .at(0.8, 0, t => t * t, () => {
-                        callbackLog.push('F: quadratic ease complete');
-                    });
+            // Staggered text animation
+            const textChars = timeline.stagger(12, 0.05, (kf) => {
+                kf.start(0)
+                  .at(0.4, 1, t => Math.sin(t * Math.PI * 0.5)) // Sine ease in
+                  .hold(0.3)
+                  .at(0.9, 0.2, t => 1 - Math.pow(1 - t, 2)); // Ease out quad
             });
 
-            return { a, b, c, d, e, f };
+            const textGlow = timeline.track((kf) => {
+                kf.start(0)
+                  .at(0.3, 0.8)
+                  .at(0.7, 1)
+                  .at(1, 0.3);
+            });
+
+            // Shape morphing with hold
+            const morphShape = timeline.track((kf) => {
+                kf.start(0)
+                  .at(0.25, 1) // Morph to circle
+                  .hold(0.3)   // Hold as circle
+                  .at(0.7, 0.5) // Partial morph
+                  .at(1, 0);   // Back to square
+            });
+
+            const shapeColor = timeline.track((kf) => {
+                kf.start(0)     // Blue
+                  .at(0.33, 0.33) // Cyan
+                  .at(0.66, 0.66) // Magenta
+                  .at(1, 1);    // Red
+            });
+
+            // Particle system
+            const particles = timeline.stagger(20, 0.03, (kf) => {
+                kf.start(0)
+                  .at(0.3, 1, t => t * t) // Ease in quad
+                  .at(0.8, 0.8)
+                  .at(1, 0, t => Math.pow(t, 1.5)); // Ease in 1.5
+            });
+
+            // Background gradient
+            const bgGradient = timeline.track((kf) => {
+                kf.start(0)
+                  .at(0.5, 1, t => 0.5 * (1 + Math.sin((t - 0.5) * Math.PI))) // Sine wave
+                  .at(1, 0);
+            });
+
+            return { 
+                logoScale, logoRotation, logoChild,
+                textChars, textGlow,
+                morphShape, shapeColor,
+                particles,
+                bgGradient
+            };
         });
 
         // Canvas setup
@@ -99,115 +355,185 @@
         const width = canvas.width;
         const height = canvas.height;
 
-        // Track colors
-        const colors = {
-            a: '#9d4edd',     // purple (parent)
-            b: '#3f88c5',     // blue
-            c: '#06ffa5',     // green
-            d: '#ff9500',     // orange (child)
-            f: '#ffd60a',     // yellow
-            e0: '#ef233c',    // red (stagger)
-            e1: '#ff006e',    // pink (stagger)
-            e2: '#f72585',    // magenta (stagger)
-            e3: '#b5179e',    // purple (stagger)
-            e4: '#7209b7'     // dark purple (stagger)
-        };
-
         // Animation state
         let isPlaying = false;
         let animationId = null;
         let startTime = null;
-        const animationDuration = 4000; // 4 seconds
+        let currentMode = 'manual';
+        const animationDuration = 6000; // 6 seconds
 
-        function drawTrack(track, color, y, label) {
-            const value = track.currentValue;
-            const barWidth = value * (width - 200);
-            
-            // Background bar
-            ctx.fillStyle = '#333';
-            ctx.fillRect(100, y, width - 200, 30);
-            
-            // Progress bar
-            ctx.fillStyle = color;
-            ctx.fillRect(100, y, barWidth, 30);
-            
-            // Border
-            ctx.strokeStyle = '#666';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(100, y, width - 200, 30);
-            
-            // Label
-            ctx.fillStyle = '#fff';
-            ctx.font = '14px monospace';
-            ctx.fillText(label, 10, y + 20);
-            
-            // Value
-            ctx.fillText(value.toFixed(3), width - 80, y + 20);
-            
-            // Parent relationship indicator
-            if (track === d) {
-                ctx.fillStyle = colors.a;
-                ctx.fillRect(85, y + 10, 10, 10);
-                ctx.fillStyle = color;
-                ctx.fillRect(87, y + 12, 6, 6);
-            }
+        // Utility functions
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
         }
 
-        function drawTimeline(progress) {
-            // Clear canvas
-            ctx.fillStyle = '#000';
+        function hslToRgb(h, s, l) {
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            const m = l - c / 2;
+            let r, g, b;
+            
+            if (h < 60) [r, g, b] = [c, x, 0];
+            else if (h < 120) [r, g, b] = [x, c, 0];
+            else if (h < 180) [r, g, b] = [0, c, x];
+            else if (h < 240) [r, g, b] = [0, x, c];
+            else if (h < 300) [r, g, b] = [x, 0, c];
+            else [r, g, b] = [c, 0, x];
+            
+            return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+        }
+
+        function drawScene(progress) {
+            // Clear and draw background gradient
+            const gradientPos = bgGradient.currentValue;
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            const [r1, g1, b1] = hslToRgb(220 + gradientPos * 60, 0.8, 0.1);
+            const [r2, g2, b2] = hslToRgb(280 + gradientPos * 40, 0.9, 0.2);
+            gradient.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
+            gradient.addColorStop(1, `rgb(${r2}, ${g2}, ${b2})`);
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, width, height);
-            
-            // Draw progress indicator
-            ctx.fillStyle = '#fff';
-            ctx.font = '16px monospace';
-            ctx.fillText(`Progress: ${progress.toFixed(3)}`, 10, 30);
-            
-            // Progress line
-            const progressX = 100 + progress * (width - 200);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(progressX, 50);
-            ctx.lineTo(progressX, height - 120);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // Draw tracks
-            drawTrack(a, colors.a, 60, 'Track A (parent)');
-            drawTrack(b, colors.b, 100, 'Track B (.at callbacks)');
-            drawTrack(c, colors.c, 140, 'Track C (hold)');
-            drawTrack(d, colors.d, 180, 'Track D (child)');
-            drawTrack(f, colors.f, 220, 'Track F (easing)');
-            
-            // Draw stagger tracks
-            e.forEach((track, i) => {
-                if (i < 5) {
-                    drawTrack(track, colors[`e${i}`], 260 + i * 25, `Stagger ${i}`);
-                }
-            });
-            
-            // Draw relationship lines
-            if (d.currentValue > 0) {
-                ctx.strokeStyle = colors.a;
-                ctx.lineWidth = 2;
-                ctx.setLineDash([3, 3]);
+
+            // Draw particles
+            particles.forEach((particle, i) => {
+                const value = particle.currentValue;
+                if (value <= 0) return;
+                
+                const angle = (i / particles.length) * Math.PI * 2;
+                const radius = 120 + value * 80;
+                const x = width / 2 + Math.cos(angle) * radius;
+                const y = height / 2 + Math.sin(angle) * radius;
+                const size = value * 8 + 2;
+                
+                ctx.save();
+                ctx.globalAlpha = value * 0.8;
+                ctx.fillStyle = `hsl(${180 + i * 8}, 70%, 60%)`;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = `hsl(${180 + i * 8}, 70%, 60%)`;
                 ctx.beginPath();
-                ctx.moveTo(80, 75);
-                ctx.lineTo(80, 195);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-            
-            // Draw callback log
-            ctx.fillStyle = '#888';
-            ctx.font = '10px monospace';
-            const logY = height - 100;
-            ctx.fillText('Callback Log:', 10, logY);
-            callbackLog.slice(-8).forEach((msg, i) => {
-                ctx.fillText(`• ${msg}`, 10, logY + 15 + i * 12);
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             });
+
+            // Draw morphing shape
+            const morph = morphShape.currentValue;
+            const colorValue = shapeColor.currentValue;
+            const [r, g, b] = hslToRgb(colorValue * 300, 0.8, 0.6);
+            
+            ctx.save();
+            ctx.translate(width * 0.75, height * 0.3);
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
+            
+            const size = 60;
+            const cornerRadius = morph * size * 0.5;
+            
+            ctx.beginPath();
+            ctx.roundRect(-size, -size, size * 2, size * 2, cornerRadius);
+            ctx.fill();
+            ctx.restore();
+
+            // Draw logo with parent-child relationship
+            const scale = logoScale.currentValue;
+            const rotation = logoRotation.currentValue * Math.PI * 2;
+            const childScale = logoChild.currentValue;
+            
+            ctx.save();
+            ctx.translate(width * 0.25, height * 0.7);
+            ctx.rotate(rotation);
+            ctx.scale(scale, scale);
+            
+            // Main logo
+            ctx.fillStyle = '#4ecdc4';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#4ecdc4';
+            ctx.beginPath();
+            ctx.arc(0, 0, 40, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Child element
+            ctx.save();
+            ctx.scale(childScale, childScale);
+            ctx.fillStyle = '#ff6b6b';
+            ctx.shadowColor = '#ff6b6b';
+            ctx.beginPath();
+            ctx.arc(0, 0, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            ctx.restore();
+
+            // Draw staggered text
+            const text = "MINI TIMELINE";
+            const glow = textGlow.currentValue;
+            
+            ctx.save();
+            ctx.translate(width / 2, height / 2);
+            ctx.font = 'bold 48px SF Mono, Monaco, Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const totalWidth = ctx.measureText(text).width;
+            let x = -totalWidth / 2;
+            
+            text.split('').forEach((char, i) => {
+                if (i >= textChars.length) return;
+                const charValue = textChars[i].currentValue;
+                if (charValue <= 0) return;
+                
+                const charWidth = ctx.measureText(char).width;
+                const y = -Math.sin(charValue * Math.PI) * 20;
+                
+                ctx.save();
+                ctx.globalAlpha = charValue;
+                ctx.translate(x + charWidth / 2, y);
+                ctx.scale(0.5 + charValue * 0.5, 0.5 + charValue * 0.5);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = glow * 30;
+                ctx.shadowColor = '#4ecdc4';
+                ctx.fillText(char, 0, 0);
+                ctx.restore();
+                
+                x += charWidth;
+            });
+            
+            ctx.restore();
+
+            // Draw progress indicator
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '16px SF Mono, Monaco, Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Progress: ${progress.toFixed(3)}`, 20, 30);
+            ctx.fillText(`Mode: ${currentMode}`, 20, 55);
+            
+            // Progress bar
+            const barWidth = 200;
+            const barHeight = 6;
+            const barX = 20;
+            const barY = 70;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            ctx.fillStyle = '#4ecdc4';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#4ecdc4';
+            ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+            
+            ctx.restore();
+        }
+
+        function updateProgress(progress) {
+            timeline.update(progress);
+            drawScene(progress);
+            document.getElementById('progressValue').textContent = progress.toFixed(3);
+            if (currentMode === 'manual') {
+                document.getElementById('progress').value = progress;
+            }
         }
 
         function animate(timestamp) {
@@ -215,12 +541,7 @@
             const elapsed = timestamp - startTime;
             const progress = Math.min(elapsed / animationDuration, 1);
             
-            timeline.update(progress);
-            drawTimeline(progress);
-            
-            // Update slider
-            document.getElementById('progress').value = progress;
-            document.getElementById('progressValue').textContent = progress.toFixed(2);
+            updateProgress(progress);
             
             if (progress < 1 && isPlaying) {
                 animationId = requestAnimationFrame(animate);
@@ -232,22 +553,56 @@
 
         // Controls
         const progressSlider = document.getElementById('progress');
-        const progressValue = document.getElementById('progressValue');
         const playBtn = document.getElementById('playBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const inputModes = document.querySelectorAll('.input-mode');
+
+        // Input mode switching
+        inputModes.forEach(mode => {
+            mode.addEventListener('click', () => {
+                if (isPlaying) return;
+                
+                inputModes.forEach(m => m.classList.remove('active'));
+                mode.classList.add('active');
+                currentMode = mode.dataset.mode;
+                
+                // Reset any existing event listeners
+                document.removeEventListener('scroll', handleScroll);
+                document.removeEventListener('mousemove', handleMouseMove);
+                
+                if (currentMode === 'scroll') {
+                    document.addEventListener('scroll', handleScroll);
+                } else if (currentMode === 'mouse') {
+                    document.addEventListener('mousemove', handleMouseMove);
+                }
+            });
+        });
+
+        function handleScroll() {
+            if (isPlaying || currentMode !== 'scroll') return;
+            const scrollProgress = Math.min(window.scrollY / (document.body.scrollHeight - window.innerHeight), 1);
+            updateProgress(scrollProgress);
+        }
+
+        function handleMouseMove(e) {
+            if (isPlaying || currentMode !== 'mouse') return;
+            const mouseProgress = e.clientX / window.innerWidth;
+            updateProgress(mouseProgress);
+        }
 
         progressSlider.addEventListener('input', (e) => {
-            if (isPlaying) return;
+            if (isPlaying || currentMode !== 'manual') return;
             const progress = parseFloat(e.target.value);
-            progressValue.textContent = progress.toFixed(2);
-            timeline.update(progress);
-            drawTimeline(progress);
+            updateProgress(progress);
         });
 
         playBtn.addEventListener('click', () => {
             if (!isPlaying) {
                 isPlaying = true;
+                currentMode = 'time';
+                inputModes.forEach(m => m.classList.remove('active'));
+                inputModes[1].classList.add('active'); // Time-based mode
                 startTime = null;
                 requestAnimationFrame(animate);
             }
@@ -268,16 +623,11 @@
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
-            progressSlider.value = 0;
-            progressValue.textContent = '0.00';
-            callbackLog = []; // Clear callback log
-            timeline.update(0);
-            drawTimeline(0);
+            updateProgress(0);
         });
 
         // Initial draw
-        timeline.update(0);
-        drawTimeline(0);
+        updateProgress(0);
     </script>
 </body>
 </html> 
