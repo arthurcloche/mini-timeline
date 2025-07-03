@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; padding: 20px; font-family: monospace; background: #1a1a1a; color: #fff; }
+        .controls { margin-bottom: 20px; }
+        .control-group { margin: 10px 0; }
+        input[type="range"] { width: 400px; }
+        canvas { border: 1px solid #333; background: #000; display: block; margin: 20px 0; }
+        .info { margin-top: 20px; font-size: 12px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label>Timeline Progress: <input type="range" id="progress" min="0" max="1" step="0.01" value="0"></label>
+            <span id="progressValue">0.00</span>
+        </div>
+        <div class="control-group">
+            <button id="playBtn">Play</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="resetBtn">Reset</button>
+        </div>
+    </div>
+    
+    <canvas id="timeline-canvas" width="800" height="500"></canvas>
+    
+    <div class="info">
+        <strong>Track A:</strong> Parent track (purple) - keyframes with .at(progress, value), callback at peak<br>
+        <strong>Track B:</strong> Callback track (blue) - uses .when() for callbacks that don't affect interpolation<br>
+        <strong>Track C:</strong> Hold track (green) - ramps to 0.8, holds for 0.3 duration, then continues<br>
+        <strong>Track D:</strong> Child of A (orange) - follows parent for 0.4 duration, then independent keyframes<br>
+        <strong>Track F:</strong> Easing track (yellow) - custom quadratic easing with callback completion<br>
+        <strong>Stagger:</strong> Five tracks with 0.15 offset delay, showing cascading animation effects<br>
+        <strong>New API:</strong> .at(progress, value) for keyframes, .when(progress, callback) for callbacks, hold(duration), child(track, duration)
+    </div>
+
+    <script type="module">
+        // Import the main timeline implementation
+        import { createTimeline } from './timeline.js';
+
+        // Create timeline
+        let callbackLog = [];
+        const { a, b, c, d, e, f, timeline } = createTimeline((timeline) => {
+            const a = timeline.track((keyframes) => {
+                keyframes.start(0)
+                    .at(0.15, 0.25)
+                    .at(0.5, 1, () => {
+                        callbackLog.push('A: peaked at 1');
+                    })
+                    .at(0.95, 0.5)
+                    .at(1, 0);
+            }).parent();
+            
+            const b = timeline.track((keyframes) => {
+                keyframes.start(0.2)
+                    .at(0.3, 0.8)
+                    .when(0.4, () => callbackLog.push('B: callback at 0.4'))
+                    .at(0.6, 0.1)
+                    .at(0.8, 0.9)
+                    .when('end', () => callbackLog.push('B: reached end'));
+            });
+
+            const c = timeline.track((keyframes) => {
+                keyframes.start(0)
+                    .at(0.4, 0.8, () => {
+                        callbackLog.push('C: about to hold at 0.8');
+                    })
+                    .hold(0.3)
+                    .at(0.9, 0);
+            });
+            
+            const d = timeline.track((keyframes) => {
+                keyframes.child(a, 0.5)
+                    .when('start', () => callbackLog.push('D: child started'))
+                    .at(0.5, 0.3)
+                    .at(1, 1);
+            });
+            
+            const e = timeline.stagger(5, 0.15, (keyframes) => {
+                keyframes.start(0)
+                    .at(0.5, 1)
+                    .at(1, 0.2);
+            });
+
+            const f = timeline.track((keyframes) => {
+                keyframes.start(1)
+                    .at(0.8, 0, t => t * t, () => {
+                        callbackLog.push('F: quadratic ease complete');
+                    });
+            });
+
+            return { a, b, c, d, e, f };
+        });
+
+        // Canvas setup
+        const canvas = document.getElementById('timeline-canvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Track colors
+        const colors = {
+            a: '#9d4edd',     // purple (parent)
+            b: '#3f88c5',     // blue
+            c: '#06ffa5',     // green
+            d: '#ff9500',     // orange (child)
+            f: '#ffd60a',     // yellow
+            e0: '#ef233c',    // red (stagger)
+            e1: '#ff006e',    // pink (stagger)
+            e2: '#f72585',    // magenta (stagger)
+            e3: '#b5179e',    // purple (stagger)
+            e4: '#7209b7'     // dark purple (stagger)
+        };
+
+        // Animation state
+        let isPlaying = false;
+        let animationId = null;
+        let startTime = null;
+        const animationDuration = 4000; // 4 seconds
+
+        function drawTrack(track, color, y, label) {
+            const value = track.currentValue;
+            const barWidth = value * (width - 200);
+            
+            // Background bar
+            ctx.fillStyle = '#333';
+            ctx.fillRect(100, y, width - 200, 30);
+            
+            // Progress bar
+            ctx.fillStyle = color;
+            ctx.fillRect(100, y, barWidth, 30);
+            
+            // Border
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(100, y, width - 200, 30);
+            
+            // Label
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px monospace';
+            ctx.fillText(label, 10, y + 20);
+            
+            // Value
+            ctx.fillText(value.toFixed(3), width - 80, y + 20);
+            
+            // Parent relationship indicator
+            if (track === d) {
+                ctx.fillStyle = colors.a;
+                ctx.fillRect(85, y + 10, 10, 10);
+                ctx.fillStyle = color;
+                ctx.fillRect(87, y + 12, 6, 6);
+            }
+        }
+
+        function drawTimeline(progress) {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw progress indicator
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px monospace';
+            ctx.fillText(`Progress: ${progress.toFixed(3)}`, 10, 30);
+            
+            // Progress line
+            const progressX = 100 + progress * (width - 200);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(progressX, 50);
+            ctx.lineTo(progressX, height - 120);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw tracks
+            drawTrack(a, colors.a, 60, 'Track A (parent)');
+            drawTrack(b, colors.b, 100, 'Track B (.at callbacks)');
+            drawTrack(c, colors.c, 140, 'Track C (hold)');
+            drawTrack(d, colors.d, 180, 'Track D (child)');
+            drawTrack(f, colors.f, 220, 'Track F (easing)');
+            
+            // Draw stagger tracks
+            e.forEach((track, i) => {
+                if (i < 5) {
+                    drawTrack(track, colors[`e${i}`], 260 + i * 25, `Stagger ${i}`);
+                }
+            });
+            
+            // Draw relationship lines
+            if (d.currentValue > 0) {
+                ctx.strokeStyle = colors.a;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(80, 75);
+                ctx.lineTo(80, 195);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Draw callback log
+            ctx.fillStyle = '#888';
+            ctx.font = '10px monospace';
+            const logY = height - 100;
+            ctx.fillText('Callback Log:', 10, logY);
+            callbackLog.slice(-8).forEach((msg, i) => {
+                ctx.fillText(`• ${msg}`, 10, logY + 15 + i * 12);
+            });
+        }
+
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+            const progress = Math.min(elapsed / animationDuration, 1);
+            
+            timeline.update(progress);
+            drawTimeline(progress);
+            
+            // Update slider
+            document.getElementById('progress').value = progress;
+            document.getElementById('progressValue').textContent = progress.toFixed(2);
+            
+            if (progress < 1 && isPlaying) {
+                animationId = requestAnimationFrame(animate);
+            } else if (progress >= 1) {
+                isPlaying = false;
+                startTime = null;
+            }
+        }
+
+        // Controls
+        const progressSlider = document.getElementById('progress');
+        const progressValue = document.getElementById('progressValue');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        progressSlider.addEventListener('input', (e) => {
+            if (isPlaying) return;
+            const progress = parseFloat(e.target.value);
+            progressValue.textContent = progress.toFixed(2);
+            timeline.update(progress);
+            drawTimeline(progress);
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (!isPlaying) {
+                isPlaying = true;
+                startTime = null;
+                requestAnimationFrame(animate);
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isPlaying = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            isPlaying = false;
+            startTime = null;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            progressSlider.value = 0;
+            progressValue.textContent = '0.00';
+            callbackLog = []; // Clear callback log
+            timeline.update(0);
+            drawTimeline(0);
+        });
+
+        // Initial draw
+        timeline.update(0);
+        drawTimeline(0);
+    </script>
+</body>
+</html> 

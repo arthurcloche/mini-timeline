@@ -1,0 +1,67 @@
+const {a,b,c,d} = useTimeline((timeline)=>{
+  
+  const a = timeline.track((keyframes)=>{
+            keyframes.start(0).then(0.5,0.5,'in-out').then(1,1).loop(0);
+            
+          })
+    const b = timeline.track((keyframes)=>{
+            keyframes.start(0.5).then(0.25,0.75,'in-out',()=>{/*callback*/}).then(0.5,0.25,'in-out').at(0.75,()=>{/*callback*/}).then(1,0.5).loop();
+            
+          })
+
+  const c = timeline.track((keyframes)=>{
+            keyframes.start(0).then(0.25,0.75,'in-out').hold().then(1,0).loop(2);
+            
+          })
+const d = timeline.track((keyframes)=>{
+            keyframes.parent(a).then(0.5,0.0).then(1,1).at(1,()=>{/*callback*/});
+            
+          })
+const e = timeline.stagger(10, 0.1, (keyframes)=>{
+    keyframes.start(0).then(0.5,1.0).then(1,0)
+
+})
+
+
+    return {a,b,c,d,e}
+}, options ={
+  defaultEasing : (progress)=> {/*cool easing like a bezier curve*/},
+  defaultLoop : 0,
+})
+
+timeline.onEnd(()=>{})
+timeline.onStart(()=>{})
+timeline.onLoop(()=>{})
+
+// to be used either with time, scroll, slider, ... we dont care
+// all we want is that it's between 0-1
+timeline.update(value)
+
+// helper
+const remaped = timeline.ease(timeline.remap(a,100,300),'linear');
+// linear remap from 0-1 to [min,max]
+
+/*
+Assumption : everything is between 0-1 
+
+.track((keyframes)=>{}) a simple track that will go from 0 to 1
+.stagger(count, offset, (keyframes)=>{}) will return the progress of n tracks, delayed by the offset
+.parent() // register a track to be able to parent childs
+
+
+keyframes factory 
+
+.start(value,delay=0,callback=()=>{}) starting value
+.at(value,time,easing='linear' or callback for bezier or whatnot,callback=()=>{}) linear interpolation w/ easing, 'default' is 'linear' by default but can be set from the options 
+.step(value,time,callback) no interpolation
+.hold() hold the last value
+.child(track) follow the same value until told differently
+.when(time or string 'start' or 'end', callback=()=>{}) fire a callback at a specific time
+.stagger(count, delay)
+.loop(integer or string)
+
+options =
+defaultEasing : set a default easing for all the tracks
+defaultLoop : set a default loop count, if looping
+loop : true | false 
+*/
